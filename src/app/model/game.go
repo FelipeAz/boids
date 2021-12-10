@@ -10,6 +10,8 @@ const (
 	ScreenHeight = 360
 	ScreenWidth  = 640
 	BoidCount    = 500
+	ViewRadius   = 13
+	AdjRate      = 0.015
 )
 
 var (
@@ -19,10 +21,11 @@ var (
 		B: 50,
 		A: 255,
 	}
-	boids [BoidCount]*Boid
+	boids   [BoidCount]*Boid
+	BoidMap [ScreenWidth + 1][ScreenHeight + 1]int
 )
 
-type Game struct {}
+type Game struct{}
 
 func (g *Game) Update() error {
 	return nil
@@ -32,8 +35,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	for _, boid := range boids {
 		screen.Set(int(boid.position.x+1), int(boid.position.y), green)
 		screen.Set(int(boid.position.x-1), int(boid.position.y), green)
-		screen.Set(int(boid.position.x+1), int(boid.position.y-1), green)
-		screen.Set(int(boid.position.x+1), int(boid.position.y+1), green)
+		screen.Set(int(boid.position.x), int(boid.position.y-1), green)
+		screen.Set(int(boid.position.x), int(boid.position.y+1), green)
 	}
 }
 

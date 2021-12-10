@@ -8,6 +8,11 @@ import (
 )
 
 func main() {
+	for i, row := range game.BoidMap {
+		for j := range row {
+			game.BoidMap[i][j] = -1
+		}
+	}
 	for i := 0; i < game.BoidCount; i++ {
 		game.CreateBoid(i)
 	}
