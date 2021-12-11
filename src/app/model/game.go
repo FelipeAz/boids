@@ -2,6 +2,7 @@ package model
 
 import (
 	"image/color"
+	"sync"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -23,6 +24,7 @@ var (
 	}
 	boids   [BoidCount]*Boid
 	BoidMap [ScreenWidth + 1][ScreenHeight + 1]int
+	rWlock  = sync.RWMutex{}
 )
 
 type Game struct{}

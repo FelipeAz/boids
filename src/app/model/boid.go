@@ -14,56 +14,70 @@ type Boid struct {
 
 func (b *Boid) calcAcceleration() Vector {
 	upper, lower := b.position.AddV(ViewRadius), b.position.AddV(-ViewRadius)
+	avgPosition := Vector{
+		x: 0,
+		y: 0,
+	}
 	avgVelocity := Vector{
+		x: 0,
+		y: 0,
+	}
+	separation := Vector{
 		x: 0,
 		y: 0,
 	}
 	count := 0.0
 
+	rWlock.RLock()
 	for i := math.Max(lower.x, 0); i <= math.Min(upper.x, ScreenWidth); i++ {
 		for j := math.Max(lower.y, 0); j <= math.Min(upper.y, ScreenHeight); j++ {
 			if otherBoidId := BoidMap[int(i)][int(j)]; otherBoidId != -1 && otherBoidId != b.id {
 				if dist := boids[otherBoidId].position.Distance(b.position); dist < ViewRadius {
 					count++
 					avgVelocity = avgVelocity.Add(boids[otherBoidId].velocity)
+					avgPosition = avgPosition.Add(boids[otherBoidId].position)
+					separation = separation.Add(b.position.Subtract(boids[otherBoidId].position).DivideV(dist))
 				}
 			}
 		}
 	}
+	rWlock.RUnlock()
 
 	accel := Vector{
-		x: 0,
-		y: 0,
+		x: b.borderBounce(b.position.x, ScreenWidth),
+		y: b.borderBounce(b.position.y, ScreenHeight),
 	}
 	if count > 0 {
-		avgVelocity = avgVelocity.DivideV(count)
-		accel = avgVelocity.Subtract(b.velocity).MultiplyV(AdjRate)
+		avgPosition, avgVelocity = avgPosition.DivideV(count), avgVelocity.DivideV(count)
+		accelAlignment := avgVelocity.Subtract(b.velocity).MultiplyV(AdjRate)
+		accelCohesion := avgPosition.Subtract(b.position).MultiplyV(AdjRate)
+		accelSeparation := separation.MultiplyV(AdjRate)
+		accel = accel.Add(accelAlignment).Add(accelCohesion).Add(accelSeparation)
 	}
 
 	return accel
 }
 
+func (b *Boid) borderBounce(pos, maxBorderPos float64) float64 {
+	if pos < ViewRadius {
+		return 1 / pos
+	}
+	if pos > maxBorderPos-ViewRadius {
+		return 1 / (pos - maxBorderPos)
+	}
+	return 0
+}
+
 func (b *Boid) moveOne() {
-	b.velocity = b.velocity.Add(b.calcAcceleration()).limit(-1, 1)
+	acceleration := b.calcAcceleration()
+	rWlock.Lock()
+	b.velocity = b.velocity.Add(acceleration).limit(-1, 1)
 	BoidMap[int(b.position.x)][int(b.position.y)] = -1
 
 	b.position = b.position.Add(b.velocity)
 	BoidMap[int(b.position.x)][int(b.position.y)] = b.id
 
-	next := b.position.Add(b.velocity)
-	if next.x >= ScreenWidth || next.x < 0 {
-		b.velocity = Vector{
-			x: -b.velocity.x,
-			y: b.velocity.y,
-		}
-	}
-
-	if next.y >= ScreenHeight || next.y < 0 {
-		b.velocity = Vector{
-			x: b.velocity.x,
-			y: -b.velocity.y,
-		}
-	}
+	rWlock.Unlock()
 }
 
 func (b *Boid) start() {
